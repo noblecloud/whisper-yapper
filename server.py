@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""watch-stt: OpenAI-compatible transcription service backed by Apple's
+"""whisperyapper: OpenAI-compatible transcription service backed by Apple's
 SpeechAnalyzer (on-device, ANE-accelerated) via the yap CLI.
 
 Endpoint:  POST /v1/audio/transcriptions   (multipart: file, model, language, response_format)
@@ -32,7 +32,7 @@ from urllib.parse import urlparse
 YAP_BIN = os.environ.get("YAP_BIN", str(Path(__file__).resolve().parent / "bin" / "yap"))
 HOST = os.environ.get("WATCH_STT_HOST", "0.0.0.0")
 PORT = int(os.environ.get("WATCH_STT_PORT", "8002"))
-ENGINE_MODEL = "apple-speechanalyzer-1"  # what /v1/models advertises
+ENGINE_MODEL = "whisperyapper-1"  # what /v1/models advertises
 DEFAULT_LOCALE = "en-US"
 MAX_UPLOAD_BYTES = int(os.environ.get("WATCH_STT_MAX_UPLOAD_BYTES", str(1024 ** 3)))  # 1 GiB cap
 
@@ -82,7 +82,7 @@ def _parse_multipart(content_type: str, body: bytes) -> dict:
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "watch-stt/0.1"
+    server_version = "whisperyapper/0.1"
 
     def log_message(self, fmt, *args):  # quieter logs
         print(f"[{time.strftime('%H:%M:%S')}] {self.address_string()} {fmt % args}", flush=True)
@@ -143,7 +143,7 @@ class Handler(BaseHTTPRequestHandler):
         if not _lock.acquire(timeout=5):
             return self._send(429, {"error": {"message": "another transcription in progress", "type": "busy"}})
         try:
-            tmp = Path(tempfile.gettempdir()) / f"watch-stt-{uuid.uuid4().hex}{Path(fname).suffix}"
+            tmp = Path(tempfile.gettempdir()) / f"whisperyapper-{uuid.uuid4().hex}{Path(fname).suffix}"
             tmp.write_bytes(fbytes)
             try:
                 data = transcribe(str(tmp), locale)
@@ -186,7 +186,7 @@ def main():
     if not os.path.exists(YAP_BIN):
         raise SystemExit(f"yap binary not found at {YAP_BIN} (set YAP_BIN)")
     srv = ThreadingHTTPServer((HOST, PORT), Handler)
-    print(f"watch-stt listening on http://{HOST}:{PORT} (engine: {ENGINE_MODEL} via {YAP_BIN})", flush=True)
+    print(f"whisperyapper listening on http://{HOST}:{PORT} (engine: {ENGINE_MODEL} via {YAP_BIN})", flush=True)
     srv.serve_forever()
 
 

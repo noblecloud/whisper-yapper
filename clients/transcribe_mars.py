@@ -11,9 +11,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Engine switch: WATCH_STT_URL env var. Default = Apple SpeechAnalyzer on Mars
-# (watch-stt, ~50x realtime). Fallback = Mars speaches (faster-whisper-medium,
-# ~2-5x realtime, OpenAI-compatible) — keep its URL here for one-line revert:
+# Engine switch: WATCH_STT_URL env var. Default = whisperyapper on Mars
+# (Apple SpeechAnalyzer, ~50x realtime). Fallback = Mars speaches
+# (faster-whisper-medium, ~2-5x realtime, OpenAI-compatible) — keep its URL
+# here for one-line revert:
 #   export WATCH_STT_URL=http://mars.golden-hops.ts.net:8001/v1/audio/transcriptions
 BASE = os.environ.get(
     "WATCH_STT_URL",

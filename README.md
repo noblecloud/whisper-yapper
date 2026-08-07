@@ -1,9 +1,9 @@
-# watch-stt
+# whisperyapper
 
-OpenAI-compatible, self-hosted speech transcription service backed by **Apple's
-`SpeechAnalyzer`** (the macOS 26+ Speech framework engine behind Notes/Voice
-Memos transcription). Runs fully on-device — no cloud, no API keys, no model
-downloads, no TCC permission prompts.
+A whisper-compatible transcription server whose engine is **yap** — the CLI
+wrapper around Apple's **`SpeechAnalyzer`** (the macOS 26+ Speech framework
+engine behind Notes/Voice Memos). Runs fully on-device: no cloud, no API keys,
+no model downloads, no TCC permission prompts.
 
 **Measured (2026-08-07): ~55× realtime** on an M2 Pro — a 2.5-hour wav
 transcribes in ~160 s, single-shot (no chunking). Compare: faster-whisper
@@ -13,10 +13,10 @@ transcribes in ~160 s, single-shot (no chunking). Compare: faster-whisper
 
 | File | Purpose |
 |---|---|
-| `server.py` | Python **stdlib-only** HTTP server, OpenAI-compatible API |
+| `server.py` | Python **stdlib-only** HTTP server — the whisper-compatible API layer |
 | `bin/yap` | Engine CLI (built from [finnvoor/yap](https://github.com/finnvoor/yap), CC0 — see `scripts/build-yap.sh`; not committed) |
 | `scripts/build-yap.sh` | Builds the `yap` binary from pinned source |
-| `com.noblecloud.watch-stt.plist` | launchd agent (Mars deployment) |
+| `com.noblecloud.whisperyapper.plist` | launchd agent (Mars deployment) |
 | `clients/transcribe_mars.py` | `/watch` pipeline client (chunks + offsets + SRT); live copy patched at `~/Personal/watch/transcribe_mars.py` |
 
 ## API
@@ -49,16 +49,16 @@ curl -F file=@test.wav -F model=whisper-1 \
 ## Deploy (Mars)
 
 ```bash
-scp -r server.py bin/ com.noblecloud.watch-stt.plist mars:~/watch-stt/
-ssh mars 'mkdir -p ~/Library/LaunchAgents && cp ~/watch-stt/com.noblecloud.watch-stt.plist ~/Library/LaunchAgents/'
-ssh mars 'launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.noblecloud.watch-stt.plist'
+scp -r server.py bin/ com.noblecloud.whisperyapper.plist mars:~/whisperyapper/
+ssh mars 'mkdir -p ~/Library/LaunchAgents && cp ~/whisperyapper/com.noblecloud.whisperyapper.plist ~/Library/LaunchAgents/'
+ssh mars 'launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.noblecloud.whisperyapper.plist'
 # service: http://mars.golden-hops.ts.net:8002  (tailnet only)
 ```
 
 ## /watch engine swap
 
 ```bash
-# Apple engine (default since 2026-08-07)
+# whisperyapper (default since 2026-08-07)
 python3 transcribe_mars.py video.wav out.srt
 
 # Fallback: speaches (faster-whisper-medium) on Mars :8001
