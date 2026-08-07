@@ -30,15 +30,34 @@ audio file → whisper-yapper (HTTP API or CLI) → yap → Apple SpeechAnalyzer
 
 - macOS 26+ (SpeechAnalyzer availability)
 - Apple Silicon recommended (the engine is neural-accelerated)
-- Xcode Command Line Tools (only to build the `yap` engine binary)
+- The `yap` engine CLI — see below
+
+## Installing the engine (yap)
+
+whisper-yapper is a wrapper around [yap](https://github.com/finnvoor/yap)
+(CC0-1.0, by Finn Voorhees). Any existing yap install is picked up
+automatically; otherwise the recommended path is Homebrew:
+
+```bash
+brew install yap          # official formula (homebrew-core), bottled
+```
+
+No Homebrew? Build the vendored copy (pinned source, needs Xcode CLT):
+
+```bash
+./scripts/build-yap.sh    # outputs ./bin/yap; skips itself if yap is already installed
+```
+
+**Engine resolution order:** `YAP_BIN` env → `yap` on PATH (brew) →
+`./bin/yap` (vendored build).
 
 ## Quickstart
 
 ```bash
 git clone https://github.com/noblecloud/whisper-yapper
 cd whisper-yapper
-./scripts/build-yap.sh          # builds bin/yap from pinned finnvoor/yap source
-python3 server.py               # serve mode, listens on :8002
+brew install yap                       # engine (or: ./scripts/build-yap.sh)
+python3 server.py                      # serve mode, listens on :8002
 
 # smoke test (another terminal)
 curl -F file=@speech.wav -F model=whisper-1 \
@@ -92,7 +111,7 @@ GET  /health
 | `WHISPER_YAPPER_HOST` | `0.0.0.0` | bind address |
 | `WHISPER_YAPPER_PORT` | `8002` | listen port |
 | `WHISPER_YAPPER_MAX_UPLOAD_BYTES` | `1073741824` (1 GiB) | upload cap |
-| `YAP_BIN` | `./bin/yap` | engine binary path |
+| `YAP_BIN` | auto | engine binary — resolution: env → PATH (brew) → `./bin/yap` |
 
 Legacy `WATCH_STT_*` env names are still accepted.
 

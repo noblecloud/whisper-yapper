@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -35,7 +36,22 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
-YAP_BIN = os.environ.get("YAP_BIN", str(Path(__file__).resolve().parent / "bin" / "yap"))
+def find_yap() -> str | None:
+    """Resolve the yap engine binary.
+
+    Priority: YAP_BIN env > PATH (brew install yap) > vendored ./bin/yap.
+    """
+    if os.environ.get("YAP_BIN"):
+        return os.environ["YAP_BIN"]
+    if shutil.which("yap"):
+        return shutil.which("yap")
+    local = Path(__file__).resolve().parent / "bin" / "yap"
+    return str(local) if local.exists() else None
+
+
+YAP_BIN = find_yap()
+YAP_HINT = ("yap engine not found. Install it with `brew install yap`, "
+            "or build the vendored copy with ./scripts/build-yap.sh, or set YAP_BIN.")
 # Legacy WATCH_STT_* names accepted for backward compatibility.
 HOST = os.environ.get("WHISPER_YAPPER_HOST", os.environ.get("WATCH_STT_HOST", "0.0.0.0"))
 PORT = int(os.environ.get("WHISPER_YAPPER_PORT", os.environ.get("WATCH_STT_PORT", "8002")))
@@ -59,6 +75,8 @@ def _fmt_srt_time(sec: float) -> str:
 
 def transcribe(wav_path: str, locale: str = DEFAULT_LOCALE) -> dict:
     """Run yap on a wav file, return parsed {'segments': [...], 'duration': s}."""
+    if YAP_BIN is None:
+        raise RuntimeError(YAP_HINT)
     cmd = [YAP_BIN, "transcribe", wav_path, "--json", "--locale", locale]
     started = time.monotonic()
     r = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
@@ -214,8 +232,8 @@ def cli_main(argv: list[str]) -> int:
         print("usage: whisper-yapper [serve] | transcribe FILE [--format srt|text|json] "
               "[--locale LOC] [-o OUT]", file=sys.stderr)
         return 2
-    if not os.path.exists(YAP_BIN):
-        print(f"yap binary not found at {YAP_BIN} (set YAP_BIN)", file=sys.stderr)
+    if YAP_BIN is None:
+        print(YAP_HINT, file=sys.stderr)
         return 1
     path, fmt, locale, out = argv[1], "srt", DEFAULT_LOCALE, None
     i = 2
@@ -247,8 +265,8 @@ def cli_main(argv: list[str]) -> int:
 
 
 def main():
-    if not os.path.exists(YAP_BIN):
-        raise SystemExit(f"yap binary not found at {YAP_BIN} (set YAP_BIN)")
+    if YAP_BIN is None:
+        raise SystemExit(YAP_HINT)
     srv = ThreadingHTTPServer((HOST, PORT), Handler)
     print(f"whisper-yapper listening on http://{HOST}:{PORT} (engine: {ENGINE_MODEL} via {YAP_BIN})", flush=True)
     srv.serve_forever()
