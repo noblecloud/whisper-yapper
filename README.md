@@ -8,6 +8,12 @@ Drop in the URL, point any whisper client at it, and get transcriptions at
 **~55× realtime** with zero cloud dependency: no API keys, no model
 downloads, no permission prompts.
 
+**Credit where it's due:** the actual speech-to-text is performed by
+[yap](https://github.com/finnvoor/yap) (CC0-1.0, by Finn Voorhees) — a CLI
+wrapper around Apple's `SpeechAnalyzer`. whisper-yapper is the
+whisper-compatible server/CLI layer around yap; yap does all the heavy
+lifting.
+
 ```
 audio file → whisper-yapper (HTTP API or CLI) → yap → Apple SpeechAnalyzer → segments + timestamps
 ```
@@ -128,7 +134,11 @@ Same-span quality check vs faster-whisper-medium: 0.91 word overlap.
 - One transcription at a time (single-flight lock; `429` when busy).
 - The engine needs no chunking — long files are fine in one request.
 
-## Acknowledgments
+## Credits
 
-- [finnvoor/yap](https://github.com/finnvoor/yap) (CC0-1.0) — the engine CLI
-- Apple Speech framework (`SpeechAnalyzer`)
+- **[finnvoor/yap](https://github.com/finnvoor/yap)** (CC0-1.0) by
+  [Finn Voorhees](https://github.com/finnvoor) — the engine CLI that performs
+  the actual transcription. whisper-yapper is a whisper-compatible
+  server/CLI wrapper around yap; without it, none of this works.
+- **Apple Speech framework** (`SpeechAnalyzer`) — the on-device transcription
+  engine in macOS 26+ (the same engine behind Notes and Voice Memos).
