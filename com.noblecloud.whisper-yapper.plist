@@ -3,21 +3,21 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.noblecloud.whisperyapper</string>
+    <string>com.noblecloud.whisper-yapper</string>
     <key>ProgramArguments</key>
     <array>
         <string>/usr/bin/python3</string>
-        <string>/Users/noblecloud/whisperyapper/server.py</string>
+        <string>/Users/noblecloud/whisper-yapper/server.py</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
     <true/>
     <key>WorkingDirectory</key>
-    <string>/Users/noblecloud/whisperyapper</string>
+    <string>/Users/noblecloud/whisper-yapper</string>
     <key>StandardOutPath</key>
-    <string>/Users/noblecloud/whisperyapper/server.log</string>
+    <string>/Users/noblecloud/whisper-yapper/server.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/noblecloud/whisperyapper/server.err</string>
+    <string>/Users/noblecloud/whisper-yapper/server.err</string>
 </dict>
 </plist>

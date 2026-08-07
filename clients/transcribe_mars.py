@@ -11,7 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Engine switch: WATCH_STT_URL env var. Default = whisperyapper on Mars
+# Engine switch: WATCH_STT_URL env var. Default = whisper-yapper on Mars
 # (Apple SpeechAnalyzer, ~50x realtime). Fallback = Mars speaches
 # (faster-whisper-medium, ~2-5x realtime, OpenAI-compatible) — keep its URL
 # here for one-line revert:
