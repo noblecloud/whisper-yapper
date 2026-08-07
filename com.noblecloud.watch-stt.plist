@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.noblecloud.watch-stt</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/Users/noblecloud/watch-stt/server.py</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>WorkingDirectory</key>
+    <string>/Users/noblecloud/watch-stt</string>
+    <key>StandardOutPath</key>
+    <string>/Users/noblecloud/watch-stt/server.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/noblecloud/watch-stt/server.err</string>
+</dict>
+</plist>

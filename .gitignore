@@ -1,0 +1,13 @@
+# build artifact — run scripts/build-yap.sh
+bin/
+
+# python
+__pycache__/
+*.pyc
+
+# logs
+server.log
+server.err
+
+# macOS
+.DS_Store
