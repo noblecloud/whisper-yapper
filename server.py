@@ -36,11 +36,15 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 YAP_BIN = os.environ.get("YAP_BIN", str(Path(__file__).resolve().parent / "bin" / "yap"))
-HOST = os.environ.get("WATCH_STT_HOST", "0.0.0.0")
-PORT = int(os.environ.get("WATCH_STT_PORT", "8002"))
+# Legacy WATCH_STT_* names accepted for backward compatibility.
+HOST = os.environ.get("WHISPER_YAPPER_HOST", os.environ.get("WATCH_STT_HOST", "0.0.0.0"))
+PORT = int(os.environ.get("WHISPER_YAPPER_PORT", os.environ.get("WATCH_STT_PORT", "8002")))
 ENGINE_MODEL = "whisper-yapper-1"  # what /v1/models advertises
 DEFAULT_LOCALE = "en-US"
-MAX_UPLOAD_BYTES = int(os.environ.get("WATCH_STT_MAX_UPLOAD_BYTES", str(1024 ** 3)))  # 1 GiB cap
+MAX_UPLOAD_BYTES = int(os.environ.get(
+    "WHISPER_YAPPER_MAX_UPLOAD_BYTES",
+    os.environ.get("WATCH_STT_MAX_UPLOAD_BYTES", str(1024 ** 3)),
+))  # 1 GiB cap
 
 _lock = threading.Lock()
 

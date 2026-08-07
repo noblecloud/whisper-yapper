@@ -1,23 +1,54 @@
 # whisper-yapper
 
-A whisper-compatible transcription server whose engine is **yap** — the CLI
-wrapper around Apple's **`SpeechAnalyzer`** (the macOS 26+ Speech framework
-engine behind Notes/Voice Memos). Runs fully on-device: no cloud, no API keys,
-no model downloads, no TCC permission prompts.
+A **whisper-compatible speech transcription server** powered by Apple's
+on-device `SpeechAnalyzer` — the macOS 26+ Speech framework engine behind
+Notes and Voice Memos.
 
-**Measured (2026-08-07): ~55× realtime** on an M2 Pro — a 2.5-hour wav
-transcribes in ~160 s, single-shot (no chunking). Compare: faster-whisper
-(CPU) ≈ 1.5–5× realtime.
+Drop in the URL, point any whisper client at it, and get transcriptions at
+**~55× realtime** with zero cloud dependency: no API keys, no model
+downloads, no permission prompts.
 
-## Components
+```
+audio file → whisper-yapper (HTTP API or CLI) → yap → Apple SpeechAnalyzer → segments + timestamps
+```
 
-| File | Purpose |
-|---|---|
-| `server.py` | Python **stdlib-only** HTTP server — the whisper-compatible API layer |
-| `bin/yap` | Engine CLI (built from [finnvoor/yap](https://github.com/finnvoor/yap), CC0 — see `scripts/build-yap.sh`; not committed) |
-| `scripts/build-yap.sh` | Builds the `yap` binary from pinned source |
-| `com.noblecloud.whisper-yapper.plist` | launchd agent (Mars deployment) |
-| `clients/transcribe_mars.py` | `/watch` pipeline client (chunks + offsets + SRT); live copy patched at `~/Personal/watch/transcribe_mars.py` |
+## Highlights
+
+- **~55× realtime** (measured, Apple M2 Pro): a 2.5-hour wav in ~160 s — single shot, no chunking
+- **OpenAI/whisper-compatible**: `POST /v1/audio/transcriptions`, `GET /v1/models` — same shape as OpenAI, Groq, speaches
+- **Runs fully on-device**: no cloud keys, no model downloads, no TCC prompts
+- **Two modes**: HTTP server (stdlib-only Python) or one-shot CLI
+- **Word-level timestamps** and `json` / `verbose_json` / `text` / `srt` outputs
+
+## Requirements
+
+- macOS 26+ (SpeechAnalyzer availability)
+- Apple Silicon recommended (the engine is neural-accelerated)
+- Xcode Command Line Tools (only to build the `yap` engine binary)
+
+## Quickstart
+
+```bash
+git clone https://github.com/noblecloud/whisper-yapper
+cd whisper-yapper
+./scripts/build-yap.sh          # builds bin/yap from pinned finnvoor/yap source
+python3 server.py               # serve mode, listens on :8002
+
+# smoke test (another terminal)
+curl -F file=@speech.wav -F model=whisper-1 \
+     -F response_format=verbose_json http://localhost:8002/v1/audio/transcriptions
+```
+
+## CLI mode (no server)
+
+Same engine, one-shot:
+
+```bash
+./whisper-yapper transcribe speech.wav -o speech.srt          # srt (default)
+./whisper-yapper transcribe speech.wav --format text          # plain text
+./whisper-yapper transcribe speech.wav --format json          # segments JSON
+./whisper-yapper transcribe speech.wav --locale en-US -o out.srt
+```
 
 ## API
 
@@ -27,62 +58,77 @@ GET  /v1/models
 GET  /health
 ```
 
-`response_format`: `json` (default, `{"text": ...}`), `verbose_json`
-(`{"text", "task", "language", "duration", "segments": [{id,start,end,text}]}`),
-`text`, `srt`. Shape matches [speaches](https://github.com/lexkoro/speaches)
-/ OpenAI, so clients swap engines by changing a base URL.
+| Field | Values | Notes |
+|---|---|---|
+| `file` | audio file | wav / m4a / mp3 / video (anything AVFoundation reads) |
+| `model` | any | accepted and ignored — the engine is fixed (whisper-yapper-1) |
+| `language` | BCP-47 | e.g. `en` → en-US; default en-US |
+| `response_format` | `json` · `verbose_json` · `text` · `srt` | default `json` |
 
-Env: `YAP_BIN` (default `./bin/yap`), `WATCH_STT_HOST`/`WATCH_STT_PORT`
-(default `0.0.0.0:8002`), `WATCH_STT_MAX_UPLOAD_BYTES` (default 1 GiB).
+`verbose_json` returns segments in the OpenAI shape:
 
-## Build & run
-
-```bash
-./scripts/build-yap.sh          # builds bin/yap (needs Xcode/CLT Swift)
-python3 server.py               # serve mode: listens on :8002
-
-# smoke test
-curl -F file=@test.wav -F model=whisper-1 \
-     -F response_format=verbose_json http://localhost:8002/v1/audio/transcriptions
+```json
+{
+  "text": "…",
+  "task": "transcribe",
+  "language": "en-US",
+  "duration": 753.0,
+  "segments": [
+    {"id": 1, "start": 0.0, "end": 1.98, "text": "…"}
+  ]
+}
 ```
 
-## CLI mode (no server)
+## Configuration
 
-Same engine, one-shot, from the terminal:
+| Env var | Default | Purpose |
+|---|---|---|
+| `WHISPER_YAPPER_HOST` | `0.0.0.0` | bind address |
+| `WHISPER_YAPPER_PORT` | `8002` | listen port |
+| `WHISPER_YAPPER_MAX_UPLOAD_BYTES` | `1073741824` (1 GiB) | upload cap |
+| `YAP_BIN` | `./bin/yap` | engine binary path |
 
-```bash
-./whisper-yapper transcribe file.wav -o out.srt          # srt (default)
-./whisper-yapper transcribe file.wav --format text       # plain text to stdout
-./whisper-yapper transcribe file.wav --format json       # segments JSON
-./whisper-yapper transcribe file.wav --locale en-US -o out.srt
+Legacy `WATCH_STT_*` env names are still accepted.
+
+## Deployment
+
+Run it as a user LaunchAgent so it survives reboots (macOS):
+
+```xml
+<!-- ~/Library/LaunchAgents/com.noblecloud.whisper-yapper.plist -->
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.noblecloud.whisper-yapper</string>
+  <key>ProgramArguments</key>
+  <array><string>/usr/bin/python3</string><string>/path/to/whisper-yapper/server.py</string></array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+</dict></plist>
 ```
 
-## Deploy (Mars)
-
 ```bash
-scp -r server.py bin/ com.noblecloud.whisper-yapper.plist mars:~/whisper-yapper/
-ssh mars 'mkdir -p ~/Library/LaunchAgents && cp ~/whisper-yapper/com.noblecloud.whisper-yapper.plist ~/Library/LaunchAgents/'
-ssh mars 'launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.noblecloud.whisper-yapper.plist'
-# service: http://mars.golden-hops.ts.net:8002  (tailnet only)
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.noblecloud.whisper-yapper.plist
 ```
 
-## /watch engine swap
+For tailnet-only exposure, bind `127.0.0.1` and use `tailscale serve`.
 
-```bash
-# whisper-yapper (default since 2026-08-07)
-python3 transcribe_mars.py video.wav out.srt
+## Benchmarks (measured 2026-08-07)
 
-# Fallback: speaches (faster-whisper-medium) on Mars :8001
-export WATCH_STT_URL=http://mars.golden-hops.ts.net:8001/v1/audio/transcriptions
-python3 transcribe_mars.py video.wav out.srt
-```
+| Engine | Realtime factor |
+|---|---|
+| **whisper-yapper (SpeechAnalyzer, M2 Pro)** | **~55×** |
+| whisper.cpp Metal (claimed ceiling) | 10–20× |
+| faster-whisper-medium (CPU) | ~1.5–5× |
 
-## Notes & caveats
+Same-span quality check vs faster-whisper-medium: 0.91 word overlap.
 
-- **English is guaranteed on-device**; other languages may route to Apple's
-  servers (on-device coverage varies by locale).
-- The engine itself needs **no chunking** (2.5 h single-shot); the client still
-  chunks at 23 MB out of habit — harmless.
-- Non-speech audio returns few/no segments; `language` only remaps to en-US
-  for `en`, or passes through BCP-47 tags.
-- One transcription at a time (single-flight lock; 429 when busy).
+## Caveats
+
+- **English is guaranteed on-device**; other locales may route through Apple's
+  network services (on-device coverage varies by locale).
+- One transcription at a time (single-flight lock; `429` when busy).
+- The engine needs no chunking — long files are fine in one request.
+
+## Acknowledgments
+
+- [finnvoor/yap](https://github.com/finnvoor/yap) (CC0-1.0) — the engine CLI
+- Apple Speech framework (`SpeechAnalyzer`)
