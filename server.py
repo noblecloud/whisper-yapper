@@ -2,6 +2,11 @@
 """whisper-yapper: OpenAI-compatible transcription service backed by Apple's
 SpeechAnalyzer (on-device, ANE-accelerated) via the yap CLI.
 
+Two modes:
+  serve       (default)  HTTP server — OpenAI-compatible API on :8002
+  transcribe  FILE       one-shot CLI transcription, no server:
+                         whisper-yapper transcribe file.wav -o out.srt
+
 Endpoint:  POST /v1/audio/transcriptions   (multipart: file, model, language, response_format)
            GET  /v1/models
            GET  /health
@@ -19,6 +24,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -182,6 +188,60 @@ class Handler(BaseHTTPRequestHandler):
         })
 
 
+def format_output(data: dict, fmt: str) -> str:
+    """Render yap segments as srt / text / json (CLI mode)."""
+    segments = data.get("segments", [])
+    if fmt == "text":
+        return " ".join(s["text"] for s in segments)
+    if fmt == "srt":
+        return "\n".join(
+            f"{i}\n{_fmt_srt_time(s['start'])} --> {_fmt_srt_time(s['end'])}\n{s['text']}\n"
+            for i, s in enumerate(segments, 1)
+        )
+    return json.dumps(data, indent=2)
+
+
+def cli_main(argv: list[str]) -> int:
+    """Entry point for both modes. serve = HTTP server; transcribe = one-shot."""
+    if not argv or argv[0] == "serve":
+        main()
+        return 0
+    if argv[0] != "transcribe" or len(argv) < 2:
+        print("usage: whisper-yapper [serve] | transcribe FILE [--format srt|text|json] "
+              "[--locale LOC] [-o OUT]", file=sys.stderr)
+        return 2
+    if not os.path.exists(YAP_BIN):
+        print(f"yap binary not found at {YAP_BIN} (set YAP_BIN)", file=sys.stderr)
+        return 1
+    path, fmt, locale, out = argv[1], "srt", DEFAULT_LOCALE, None
+    i = 2
+    while i < len(argv):
+        if argv[i] == "--format" and i + 1 < len(argv):
+            fmt, i = argv[i + 1], i + 2
+        elif argv[i] == "--locale" and i + 1 < len(argv):
+            locale, i = argv[i + 1], i + 2
+        elif argv[i] == "-o" and i + 1 < len(argv):
+            out, i = argv[i + 1], i + 2
+        else:
+            print(f"unknown arg: {argv[i]}", file=sys.stderr)
+            return 2
+    if fmt not in ("srt", "text", "json"):
+        print(f"unknown format: {fmt}", file=sys.stderr)
+        return 2
+    try:
+        data = transcribe(path, locale)
+    except Exception as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+    text = format_output(data, fmt)
+    if out:
+        Path(out).write_text(text)
+    else:
+        print(text)
+    print(f"[{len(data.get('segments', []))} segments, {data.get('_wall', 0):.1f}s]", file=sys.stderr)
+    return 0
+
+
 def main():
     if not os.path.exists(YAP_BIN):
         raise SystemExit(f"yap binary not found at {YAP_BIN} (set YAP_BIN)")
@@ -191,4 +251,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(cli_main(sys.argv[1:]))

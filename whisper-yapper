@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+"""whisper-yapper CLI entry point.
+
+  ./whisper-yapper                    → serve (HTTP server, :8002)
+  ./whisper-yapper transcribe F.wav [-o out.srt] [--format srt|text|json]
+
+Same engine path as the server — one codebase, two front doors.
+"""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from server import cli_main  # noqa: E402
+
+sys.exit(cli_main(sys.argv[1:]))

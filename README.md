@@ -39,11 +39,22 @@ Env: `YAP_BIN` (default `./bin/yap`), `WATCH_STT_HOST`/`WATCH_STT_PORT`
 
 ```bash
 ./scripts/build-yap.sh          # builds bin/yap (needs Xcode/CLT Swift)
-python3 server.py               # listens on :8002
+python3 server.py               # serve mode: listens on :8002
 
 # smoke test
 curl -F file=@test.wav -F model=whisper-1 \
      -F response_format=verbose_json http://localhost:8002/v1/audio/transcriptions
+```
+
+## CLI mode (no server)
+
+Same engine, one-shot, from the terminal:
+
+```bash
+./whisper-yapper transcribe file.wav -o out.srt          # srt (default)
+./whisper-yapper transcribe file.wav --format text       # plain text to stdout
+./whisper-yapper transcribe file.wav --format json       # segments JSON
+./whisper-yapper transcribe file.wav --locale en-US -o out.srt
 ```
 
 ## Deploy (Mars)
